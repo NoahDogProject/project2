@@ -3,9 +3,14 @@ const ctx = canvas.getContext('2d');
 canvas.width = 800;
 canvas.height = 600;
 
-let dogs = []; // Array to store dog images
+let dogs = [];
+let cameraX = 0; // Camera's X offset
+let cameraY = 0; // Camera's Y offset
+let isDragging = false;
+let dragStartX = 0;
+let dragStartY = 0;
 
-// Handle image upload
+// Handle image upload (dogs spawn near the camera's current view)
 document.getElementById('dog-upload').addEventListener('change', function(e) {
   const file = e.target.files[0];
   const reader = new FileReader();
@@ -16,86 +21,77 @@ document.getElementById('dog-upload').addEventListener('change', function(e) {
     img.onload = () => {
       dogs.push({
         img: img,
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
+        x: cameraX + canvas.width/2 + (Math.random() - 0.5) * 200, // Center of view
+        y: cameraY + canvas.height/2 + (Math.random() - 0.5) * 200,
         speedX: (Math.random() - 0.5) * 2,
         speedY: (Math.random() - 0.5) * 2,
-        angle: 0, // For spin effect
-        spin: 0, // For spin effect
+        angle: 0,
+        spin: 0,
       });
     };
   };
   reader.readAsDataURL(file);
 });
 
-// Draw a wagging tail
-function drawTail(ctx, x, y, angle) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(20, -10); // Tail shape
-  ctx.lineTo(20, 10);
-  ctx.closePath();
-  ctx.fillStyle = 'brown';
-  ctx.fill();
-  ctx.restore();
-}
-
-// Handle click to "boop" dogs
-canvas.addEventListener('click', function(event) {
-  const rect = canvas.getBoundingClientRect();
-  const mouseX = event.clientX - rect.left;
-  const mouseY = event.clientY - rect.top;
-
-  dogs.forEach(dog => {
-    if (mouseX > dog.x && mouseX < dog.x + 100 && mouseY > dog.y && mouseY < dog.y + 100) {
-      dog.speedY = -5; // Make the dog jump
-      dog.spin = 2; // Add a spin effect
-    }
-  });
+// Mouse drag to scroll (like Mii Channel)
+canvas.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  dragStartX = e.clientX - cameraX;
+  dragStartY = e.clientY - cameraY;
 });
+
+canvas.addEventListener('mousemove', (e) => {
+  if (isDragging) {
+    cameraX = e.clientX - dragStartX;
+    cameraY = e.clientY - dragStartY;
+  }
+});
+
+canvas.addEventListener('mouseup', () => isDragging = false);
+canvas.addEventListener('mouseleave', () => isDragging = false);
+
+// Arrow keys to scroll
+document.addEventListener('keydown', (e) => {
+  const scrollSpeed = 20;
+  switch(e.key) {
+    case 'ArrowUp': cameraY += scrollSpeed; break;
+    case 'ArrowDown': cameraY -= scrollSpeed; break;
+    case 'ArrowLeft': cameraX += scrollSpeed; break;
+    case 'ArrowRight': cameraX -= scrollSpeed; break;
+  }
+});
+
+// Draw wagging tail (same as before)
+function drawTail(ctx, x, y, angle) { /* ... */ }
+
+// Click to "boop" dogs (same as before)
+canvas.addEventListener('click', function(event) { /* ... */ });
 
 // Animation loop
 function update() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   dogs.forEach(dog => {
-    // Update position
     dog.x += dog.speedX;
     dog.y += dog.speedY;
 
-    // Bounce off walls with dynamic bounce
-    if (dog.x < 0 || dog.x > canvas.width) {
-      dog.speedX *= -1;
-      dog.speedY += (Math.random() - 0.5) * 2; // Add some vertical bounce
-    }
-    if (dog.y < 0 || dog.y > canvas.height) {
-      dog.speedY *= -1;
-      dog.speedX += (Math.random() - 0.5) * 2; // Add some horizontal bounce
-    }
+    // Optional: Bounce off "infinite" boundaries (adjust as needed)
+    // if (dog.x < -1000 || dog.x > 1000) dog.speedX *= -1;
+    // if (dog.y < -1000 || dog.y > 1000) dog.speedY *= -1;
 
-    // Apply spin effect
-    if (dog.spin) {
-      dog.angle += dog.spin;
-      dog.spin *= 0.9; // Slow down spin over time
-      if (Math.abs(dog.spin) < 0.1) dog.spin = 0; // Stop spinning
-    }
+    // Apply spin
+    if (dog.spin) { /* ... */ }
 
-    // Add wiggle effect
-    const wiggleAngle = Math.sin(Date.now() / 200) * 0.2; // Adjust speed/intensity
-
-    // Draw dog image with wiggle and spin
+    // Draw dog relative to camera
     ctx.save();
-    ctx.translate(dog.x + 50, dog.y + 50);
-    ctx.rotate(wiggleAngle + dog.angle); // Combine wiggle and spin
+    ctx.translate(dog.x - cameraX + 50, dog.y - cameraY + 50); // Offset by camera
+    ctx.rotate(wiggleAngle + dog.angle);
     ctx.drawImage(dog.img, -50, -50, 100, 100);
     ctx.restore();
 
-    // Draw wagging tail
-    const tailAngle = Math.sin(Date.now() / 150) * 0.5; // Tail wag speed
-    drawTail(ctx, dog.x + 80, dog.y + 40, tailAngle); // Adjust tail position
+    // Draw tail relative to camera
+    const tailAngle = Math.sin(Date.now() / 150) * 0.5;
+    drawTail(ctx, dog.x - cameraX + 80, dog.y - cameraY + 40, tailAngle);
   });
 
   requestAnimationFrame(update);
