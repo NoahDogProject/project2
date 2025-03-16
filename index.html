@@ -63,13 +63,28 @@
       color: #555;
       margin-top: 10px;
     }
+
+    /* New minimap styles */
+    #minimap {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 200px;
+      height: 200px;
+      border: 2px solid white;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
   </style>
 </head>
 <body>
   <h1>Welcome to DogBlob!</h1>
-  <p>Upload a photo of your dog and watch them join the blob!</p>
+  <p>Upload a photo of your dog and scroll infinitely to find others!</p>
   <input type="file" id="dog-upload" accept="image/*">
   <canvas id="gameCanvas"></canvas>
+  <!-- Add the minimap canvas here -->
+  <canvas id="minimap"></canvas>
   <script src="script.js"></script>
 </body>
 </html>
