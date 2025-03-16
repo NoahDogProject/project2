@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DogBlob</title>
   <style>
-    /* Add the animated gradient background */
     body {
       margin: 0;
       overflow: hidden;
@@ -12,14 +13,12 @@
       animation: gradientBG 15s ease infinite;
     }
 
-    /* Keyframes for the gradient animation */
     @keyframes gradientBG {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
 
-    /* Style the canvas */
     canvas {
       border: 2px solid #fff;
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
@@ -28,7 +27,6 @@
       margin: 20px auto;
     }
 
-    /* Style the upload button */
     #dog-upload {
       position: absolute;
       top: 20px;
@@ -49,7 +47,6 @@
       background: #45a049;
     }
 
-    /* Style the title and instructions */
     h1 {
       text-align: center;
       font-family: 'Arial', sans-serif;
@@ -64,7 +61,6 @@
       margin-top: 10px;
     }
 
-    /* New minimap styles */
     #minimap {
       position: fixed;
       bottom: 20px;
@@ -81,9 +77,13 @@
 <body>
   <h1>Welcome to DogBlob!</h1>
   <p>Upload a photo of your dog and scroll infinitely to find others!</p>
-  <input type="file" id="dog-upload" accept="image/*">
+  <input 
+    type="file" 
+    id="dog-upload" 
+    accept="image/*"
+    aria-label="Upload a dog photo"
+  >
   <canvas id="gameCanvas"></canvas>
-  <!-- Add the minimap canvas here -->
   <canvas id="minimap"></canvas>
   <script src="script.js"></script>
 </body>
