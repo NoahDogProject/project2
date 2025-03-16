@@ -3,10 +3,71 @@
 <head>
   <title>DogBlob</title>
   <style>
-    canvas { border: 1px solid black; }
+    /* Add the animated gradient background */
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: linear-gradient(270deg, #ff9a9e, #fbc2eb, #a6c1ee, #f6d365);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+    }
+
+    /* Keyframes for the gradient animation */
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Style the canvas */
+    canvas {
+      border: 2px solid #fff;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+      display: block;
+      margin: 20px auto;
+    }
+
+    /* Style the upload button */
+    #dog-upload {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: background 0.3s ease;
+    }
+
+    #dog-upload:hover {
+      background: #45a049;
+    }
+
+    /* Style the title and instructions */
+    h1 {
+      text-align: center;
+      font-family: 'Arial', sans-serif;
+      color: #333;
+      margin-top: 20px;
+    }
+
+    p {
+      text-align: center;
+      font-family: 'Arial', sans-serif;
+      color: #555;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
+  <h1>Welcome to DogBlob!</h1>
+  <p>Upload a photo of your dog and watch them join the blob!</p>
   <input type="file" id="dog-upload" accept="image/*">
   <canvas id="gameCanvas"></canvas>
   <script src="script.js"></script>
