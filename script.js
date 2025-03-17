@@ -7,7 +7,7 @@ canvas.height = 600;
 minimapCanvas.width = 200;
 minimapCanvas.height = 200;
 
-// Initialize Firebase (USE YOUR CONFIG!)
+// Initialize Firebase (v8 syntax)
 const firebaseConfig = {
   apiKey: "AIzaSyCDjErhIZZy04f1_ZXj0C6dGQxVvTfTBYI",
   authDomain: "dogblob-c0124.firebaseapp.com",
@@ -18,7 +18,7 @@ const firebaseConfig = {
   appId: "1:495549636725:web:d2c6d4b906436a7f3ad83c"
 };
 
-const app = firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // Multiplayer dogs array
@@ -39,6 +39,10 @@ let isDragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
 
+// Debugging
+console.log("Firebase initialized:", firebase.app().name);
+console.log("Dogs array:", dogs);
+
 // Listen for real-time dog updates
 dogsRef.onSnapshot((snapshot) => {
   snapshot.docChanges().forEach(change => {
@@ -46,7 +50,6 @@ dogsRef.onSnapshot((snapshot) => {
     if (change.type === 'added') {
       const img = new Image();
       img.onload = () => {
-        // Check if dog already exists
         if (!dogs.find(d => d.id === change.doc.id)) {
           dogs.push({
             id: change.doc.id,
@@ -60,11 +63,13 @@ dogsRef.onSnapshot((snapshot) => {
             speedX: (Math.random() - 0.5) * 2,
             speedY: (Math.random() - 0.5) * 2
           });
+          console.log("Dog added:", change.doc.id); // Debug log
         }
       };
       img.src = dogData.imgUrl;
     } else if (change.type === 'removed') {
       dogs = dogs.filter(d => d.id !== change.doc.id);
+      console.log("Dog removed:", change.doc.id); // Debug log
     }
   });
 });
