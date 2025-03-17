@@ -214,26 +214,36 @@ function update() {
   });
 
   // Draw minimap
-  minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
-  const scaleFactor = minimapCanvas.width / WORLD_SIZE;
-  dogs.forEach(dog => {
-    minimapCtx.fillStyle = '#4CAF50';
-    minimapCtx.beginPath();
-    minimapCtx.arc(
-      (dog.x + WORLD_SIZE/2) * scaleFactor,
-      (dog.y + WORLD_SIZE/2) * scaleFactor,
-      2, 0, Math.PI * 2
-    );
-    minimapCtx.fill();
-  });
-  minimapCtx.strokeStyle = 'white';
-  minimapCtx.strokeRect(
-    (-cameraX + WORLD_SIZE/2 - canvas.width/2) * scaleFactor,
-    (-cameraY + WORLD_SIZE/2 - canvas.height/2) * scaleFactor,
-    canvas.width * scaleFactor,
-    canvas.height * scaleFactor
-  );
+minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+// Calculate scaling factor
+const scaleFactor = minimapCanvas.width / WORLD_SIZE;
+
+// Draw dogs on minimap
+dogs.forEach(dog => {
+  const minimapX = (dog.x + WORLD_SIZE / 2) * scaleFactor;
+  const minimapY = (dog.y + WORLD_SIZE / 2) * scaleFactor;
+  minimapCtx.fillStyle = '#4CAF50';
+  minimapCtx.beginPath();
+  minimapCtx.arc(minimapX, minimapY, 2, 0, Math.PI * 2);
+  minimapCtx.fill();
+
+  // Debugging logs
+  console.log("Dog position:", dog.x, dog.y);
+  console.log("Minimap position:", minimapX, minimapY);
+});
+
+// Draw viewport rectangle
+const viewportX = (-cameraX + WORLD_SIZE / 2) * scaleFactor;
+const viewportY = (-cameraY + WORLD_SIZE / 2) * scaleFactor;
+const viewportWidth = canvas.width * scaleFactor;
+const viewportHeight = canvas.height * scaleFactor;
+minimapCtx.strokeStyle = 'white';
+minimapCtx.strokeRect(viewportX, viewportY, viewportWidth, viewportHeight);
+
+// Debugging logs
+console.log("Viewport position:", viewportX, viewportY);
 
   requestAnimationFrame(update);
 }
