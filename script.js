@@ -9,12 +9,12 @@ minimapCanvas.height = 200;
 
 // Initialize Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyCDjErhIZZy04f1_ZXj0C6dGQxVvTfTBYI",
-  authDomain: "dogblob-c0124.firebaseapp.com",
-  projectId: "dogblob-c0124",
-  storageBucket: "dogblob-c0124.firebasestorage.app",
-  messagingSenderId: "495549636725",
-  appId: "1:495549636725:web:d2c6d4b906436a7f3ad83c"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -58,7 +58,10 @@ auth.onAuthStateChanged((user) => {
             const dogData = dogDoc.data();
             console.log("Dog loaded:", dogData.name);
             document.getElementById('dog-name-input').value = dogData.name;
+            document.getElementById('dog-color').value = dogData.color || "#ffcc00";
+            document.getElementById('dog-accessory').value = dogData.accessory || "none";
             document.getElementById('dog-name-section').style.display = 'block';
+            document.getElementById('dog-customization-section').style.display = 'block';
           }
         });
       }
@@ -70,6 +73,7 @@ auth.onAuthStateChanged((user) => {
     document.getElementById('user-profile').style.display = 'none';
     document.getElementById('dog-upload').disabled = true;
     document.getElementById('dog-name-section').style.display = 'none';
+    document.getElementById('dog-customization-section').style.display = 'none';
   }
 });
 
@@ -81,6 +85,8 @@ function createDogForUser(userId) {
     y: 0,
     name: "Unnamed Dog", // Default name
     imgUrl: "", // Placeholder for dog image
+    color: "#ffcc00", // Default color
+    accessory: "none", // Default accessory
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   };
 
@@ -89,6 +95,7 @@ function createDogForUser(userId) {
     // Link the dog to the user
     db.collection('users').doc(userId).set({ dogId: docRef.id });
     document.getElementById('dog-name-section').style.display = 'block';
+    document.getElementById('dog-customization-section').style.display = 'block';
   });
 }
 
@@ -113,51 +120,27 @@ document.getElementById('save-dog-name').addEventListener('click', () => {
   }
 });
 
-// Chat functionality
-const chatInput = document.getElementById('chat-input');
-const messagesDiv = document.getElementById('messages');
+// Save dog customization
+document.getElementById('save-dog-customization').addEventListener('click', () => {
+  const dogColor = document.getElementById('dog-color').value;
+  const dogAccessory = document.getElementById('dog-accessory').value;
+  const user = auth.currentUser;
 
-// Send message
-chatInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter' && chatInput.value.trim()) {
-    const user = auth.currentUser;
-    if (user) {
-      db.collection('chatMessages').add({
-        text: chatInput.value.trim(),
-        userId: user.uid,
-        userName: user.displayName,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      })
-        .then(() => {
-          chatInput.value = ''; // Clear input
-        })
-        .catch((error) => {
-          console.error("Error sending message:", error);
-          alert("Failed to send message. Please try again.");
+  if (user) {
+    db.collection('users').doc(user.uid).get().then((doc) => {
+      if (doc.exists) {
+        const dogId = doc.data().dogId;
+        db.collection('dogs').doc(dogId).update({
+          color: dogColor,
+          accessory: dogAccessory
+        }).then(() => {
+          console.log("Dog customization updated!");
         });
-    } else {
-      alert("You must be signed in to chat.");
-    }
+      }
+    });
   }
 });
 
-// Listen for new messages
-db.collection('chatMessages')
-  .orderBy('timestamp', 'asc')
-  .onSnapshot((snapshot) => {
-    messagesDiv.innerHTML = ''; // Clear previous messages
-    snapshot.forEach((doc) => {
-      const message = doc.data();
-      const messageElement = document.createElement('div');
-      messageElement.textContent = `${message.userName}: ${message.text}`;
-      messagesDiv.appendChild(messageElement);
-    });
-    messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to latest message
-  }, (error) => {
-    console.error("Error fetching messages:", error);
-  });
-
-// Rest of your game logic (animations, minimap, etc.) goes here
 // Multiplayer dogs array
 let dogs = [];
 const dogsRef = db.collection('dogs');
@@ -171,7 +154,7 @@ let isDragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
 
-// Listen for real-time dog updates (initial positions only)
+// Listen for real-time dog updates
 dogsRef.onSnapshot((snapshot) => {
   snapshot.docChanges().forEach(change => {
     const dogData = change.doc.data();
@@ -181,14 +164,16 @@ dogsRef.onSnapshot((snapshot) => {
         if (!dogs.find(d => d.id === change.doc.id)) {
           dogs.push({
             id: change.doc.id,
-            x: dogData.x, // Initial position from Firestore
+            x: dogData.x,
             y: dogData.y,
             img: img,
+            color: dogData.color || "#ffcc00",
+            accessory: dogData.accessory || "none",
             scale: 0.5,
             isJumping: false,
             angle: 0,
             spin: 0,
-            speedX: (Math.random() - 0.5) * 2, // Local movement
+            speedX: (Math.random() - 0.5) * 2,
             speedY: (Math.random() - 0.5) * 2
           });
         }
@@ -200,7 +185,7 @@ dogsRef.onSnapshot((snapshot) => {
   });
 });
 
-// Upload dog to Firebase (store initial position only)
+// Upload dog to Firebase
 document.getElementById('dog-upload').addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -218,10 +203,12 @@ document.getElementById('dog-upload').addEventListener('change', function(e) {
     img.onload = async () => {
       try {
         await dogsRef.add({
-          x: cameraX + canvas.width / 2, // Initial position
+          x: cameraX + canvas.width / 2,
           y: cameraY + canvas.height / 2,
           imgUrl: event.target.result,
           owner: "Anonymous",
+          color: "#ffcc00",
+          accessory: "none",
           timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
       } catch (error) {
@@ -237,80 +224,12 @@ document.getElementById('dog-upload').addEventListener('change', function(e) {
   reader.readAsDataURL(file);
 });
 
-// Drag to scroll
-canvas.addEventListener('mousedown', (e) => {
-  isDragging = true;
-  dragStartX = e.clientX - cameraX;
-  dragStartY = e.clientY - cameraY;
-});
-
-canvas.addEventListener('mousemove', (e) => {
-  if (isDragging) {
-    cameraX = e.clientX - dragStartX;
-    cameraY = e.clientY - dragStartY;
-    cameraX = Math.max(-WORLD_SIZE/2 + canvas.width/2, Math.min(WORLD_SIZE/2 - canvas.width/2, cameraX));
-    cameraY = Math.max(-WORLD_SIZE/2 + canvas.height/2, Math.min(WORLD_SIZE/2 - canvas.height/2, cameraY));
-  }
-});
-
-canvas.addEventListener('mouseup', () => isDragging = false);
-
-// Arrow key controls
-document.addEventListener('keydown', (e) => {
-  const scrollSpeed = 20;
-  switch(e.key) {
-    case 'ArrowUp': cameraY += scrollSpeed; break;
-    case 'ArrowDown': cameraY -= scrollSpeed; break;
-    case 'ArrowLeft': cameraX += scrollSpeed; break;
-    case 'ArrowRight': cameraX -= scrollSpeed; break;
-  }
-  cameraX = Math.max(-WORLD_SIZE/2 + canvas.width/2, Math.min(WORLD_SIZE/2 - canvas.width/2, cameraX));
-  cameraY = Math.max(-WORLD_SIZE/2 + canvas.height/2, Math.min(WORLD_SIZE/2 - canvas.height/2, cameraY));
-});
-
-// Click to make dog jump and spin (local only)
-canvas.addEventListener('click', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left + cameraX;
-  const mouseY = e.clientY - rect.top + cameraY;
-
-  dogs.forEach(dog => {
-    const dist = Math.sqrt((mouseX - dog.x)**2 + (mouseY - dog.y)**2);
-    if (dist < 50) {
-      dog.isJumping = true;
-      dog.spin = 2;
-      setTimeout(() => dog.isJumping = false, 500);
-    }
-  });
-});
-
-// Draw wagging tail
-function drawTail(ctx, x, y, angle) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(20, -10);
-  ctx.lineTo(20, 10);
-  ctx.closePath();
-  ctx.fillStyle = 'brown';
-  ctx.fill();
-  ctx.restore();
-}
-
 // Animation loop
 function update() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   dogs.forEach(dog => {
     if (!dog.img) return;
-
-    // Update position and bounce (local movement)
-    dog.x += dog.speedX;
-    dog.y += dog.speedY;
-    if (dog.x < -WORLD_SIZE/2 || dog.x > WORLD_SIZE/2) dog.speedX *= -1;
-    if (dog.y < -WORLD_SIZE/2 || dog.y > WORLD_SIZE/2) dog.speedY *= -1;
 
     const screenX = dog.x - cameraX;
     const screenY = dog.y - cameraY;
@@ -320,46 +239,22 @@ function update() {
       ctx.save();
       ctx.translate(screenX, screenY);
 
-      // Wiggle effect
-      const wiggleAngle = Math.sin(Date.now() / 200) * 0.2;
-      ctx.rotate(wiggleAngle + dog.angle);
+      // Draw dog body with custom color
+      ctx.fillStyle = dog.color;
+      ctx.beginPath();
+      ctx.arc(0, 0, 50, 0, Math.PI * 2); // Draw a circle as the dog's body
+      ctx.fill();
 
-      // Jump animation
-      if (dog.isJumping) {
-        ctx.translate(0, -30 * Math.sin(Date.now() / 100));
+      // Draw accessory
+      if (dog.accessory && dog.accessory !== "none") {
+        const accessoryImg = new Image();
+        accessoryImg.src = `${dog.accessory}.png`; // Load accessory image
+        ctx.drawImage(accessoryImg, -25, -50, 50, 50); // Draw accessory on top of the dog
       }
 
-      ctx.drawImage(dog.img, -50 * dog.scale, -50 * dog.scale, 100 * dog.scale, 100 * dog.scale);
       ctx.restore();
-
-      // Draw tail
-      const tailAngle = Math.sin(Date.now() / 150) * 0.5;
-      drawTail(ctx, screenX + 40, screenY + 40, tailAngle);
     }
   });
-
-  // Draw minimap
-  minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
-  const scaleFactor = minimapCanvas.width / WORLD_SIZE;
-
-  // Draw dogs on minimap
-  dogs.forEach(dog => {
-    const minimapX = (dog.x + WORLD_SIZE / 2) * scaleFactor;
-    const minimapY = (dog.y + WORLD_SIZE / 2) * scaleFactor;
-    minimapCtx.fillStyle = '#4CAF50';
-    minimapCtx.beginPath();
-    minimapCtx.arc(minimapX, minimapY, 2, 0, Math.PI * 2);
-    minimapCtx.fill();
-  });
-
-  // Draw viewport rectangle
-  const viewportX = (cameraX + WORLD_SIZE / 2) * scaleFactor;
-  const viewportY = (cameraY + WORLD_SIZE / 2) * scaleFactor;
-  const viewportWidth = canvas.width * scaleFactor;
-  const viewportHeight = canvas.height * scaleFactor;
-  minimapCtx.strokeStyle = 'white';
-  minimapCtx.strokeRect(viewportX - viewportWidth / 2, viewportY - viewportHeight / 2, viewportWidth, viewportHeight);
 
   requestAnimationFrame(update);
 }
