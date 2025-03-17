@@ -11,7 +11,6 @@ minimapCanvas.height = 200;
 const firebaseConfig = {
   apiKey: "AIzaSyCDjErhIZZy04f1_ZXj0C6dGQxVvTfTBYI",
   authDomain: "dogblob-c0124.firebaseapp.com",
-  databaseURL: "https://dogblob-c0124-default-rtdb.firebaseio.com",
   projectId: "dogblob-c0124",
   storageBucket: "dogblob-c0124.firebasestorage.app",
   messagingSenderId: "495549636725",
@@ -25,11 +24,14 @@ const auth = firebase.auth();
 // Sign in with Google
 document.getElementById('sign-in-button').addEventListener('click', () => {
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).then((result) => {
-    console.log("Signed in as:", result.user.displayName);
-  }).catch((error) => {
-    console.error("Sign-in error:", error);
-  });
+  auth.signInWithPopup(provider)
+    .then((result) => {
+      console.log("Signed in as:", result.user.displayName);
+    })
+    .catch((error) => {
+      console.error("Sign-in error:", error.message);
+      alert("Sign-in failed: " + error.message);
+    });
 });
 
 // Listen for auth state changes
@@ -92,21 +94,68 @@ function createDogForUser(userId) {
 
 // Save dog name
 document.getElementById('save-dog-name').addEventListener('click', () => {
-  const dogName = document.getElementById('dog-name-input').value;
-  if (dogName.trim()) {
+  const dogName = document.getElementById('dog-name-input').value.trim();
+  if (dogName.length < 2 || dogName.length > 20) {
+    alert("Dog name must be between 2 and 20 characters.");
+    return;
+  }
+
+  const user = auth.currentUser;
+  if (user) {
+    db.collection('users').doc(user.uid).get().then((doc) => {
+      if (doc.exists) {
+        const dogId = doc.data().dogId;
+        db.collection('dogs').doc(dogId).update({ name: dogName }).then(() => {
+          console.log("Dog name updated:", dogName);
+        });
+      }
+    });
+  }
+});
+
+// Chat functionality
+const chatInput = document.getElementById('chat-input');
+const messagesDiv = document.getElementById('messages');
+
+// Send message
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && chatInput.value.trim()) {
     const user = auth.currentUser;
     if (user) {
-      db.collection('users').doc(user.uid).get().then((doc) => {
-        if (doc.exists) {
-          const dogId = doc.data().dogId;
-          db.collection('dogs').doc(dogId).update({ name: dogName }).then(() => {
-            console.log("Dog name updated:", dogName);
-          });
-        }
-      });
+      db.collection('chatMessages').add({
+        text: chatInput.value.trim(),
+        userId: user.uid,
+        userName: user.displayName,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      })
+        .then(() => {
+          chatInput.value = ''; // Clear input
+        })
+        .catch((error) => {
+          console.error("Error sending message:", error);
+          alert("Failed to send message. Please try again.");
+        });
+    } else {
+      alert("You must be signed in to chat.");
     }
   }
 });
+
+// Listen for new messages
+db.collection('chatMessages')
+  .orderBy('timestamp', 'asc')
+  .onSnapshot((snapshot) => {
+    messagesDiv.innerHTML = ''; // Clear previous messages
+    snapshot.forEach((doc) => {
+      const message = doc.data();
+      const messageElement = document.createElement('div');
+      messageElement.textContent = `${message.userName}: ${message.text}`;
+      messagesDiv.appendChild(messageElement);
+    });
+    messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to latest message
+  }, (error) => {
+    console.error("Error fetching messages:", error);
+  });
 
 // Rest of your game logic (animations, minimap, etc.) goes here
 // Multiplayer dogs array
@@ -154,19 +203,35 @@ dogsRef.onSnapshot((snapshot) => {
 // Upload dog to Firebase (store initial position only)
 document.getElementById('dog-upload').addEventListener('change', function(e) {
   const file = e.target.files[0];
+  if (!file) return;
+
   const reader = new FileReader();
+  reader.onloadstart = () => {
+    document.getElementById('dog-upload').disabled = true;
+    document.getElementById('dog-upload').style.opacity = '0.5';
+    document.getElementById('loading-message').style.display = 'block';
+  };
 
   reader.onload = async (event) => {
     const img = new Image();
     img.src = event.target.result;
     img.onload = async () => {
-      await dogsRef.add({
-        x: cameraX + canvas.width / 2, // Initial position
-        y: cameraY + canvas.height / 2,
-        imgUrl: event.target.result,
-        owner: "Anonymous",
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      try {
+        await dogsRef.add({
+          x: cameraX + canvas.width / 2, // Initial position
+          y: cameraY + canvas.height / 2,
+          imgUrl: event.target.result,
+          owner: "Anonymous",
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (error) {
+        console.error("Upload error:", error);
+        alert("Failed to upload dog image. Please try again.");
+      } finally {
+        document.getElementById('dog-upload').disabled = false;
+        document.getElementById('dog-upload').style.opacity = '1';
+        document.getElementById('loading-message').style.display = 'none';
+      }
     };
   };
   reader.readAsDataURL(file);
