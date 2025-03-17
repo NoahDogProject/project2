@@ -25,11 +25,6 @@ const db = firebase.firestore();
 let dogs = [];
 const dogsRef = db.collection('dogs');
 
-// Real-time chat
-const messagesDiv = document.getElementById('messages');
-const chatInput = document.getElementById('chat-input');
-const chatRef = db.collection('chat');
-
 // World settings
 const GRID_SIZE = 300;
 const WORLD_SIZE = 6000;
@@ -39,34 +34,24 @@ let isDragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
 
-// Debugging
-console.log("Firebase initialized:", firebase.app().name);
-console.log("Dogs array:", dogs);
-
-// Listen for real-time dog updates
+// Listen for real-time dog updates (initial positions only)
 dogsRef.onSnapshot((snapshot) => {
   snapshot.docChanges().forEach(change => {
     const dogData = change.doc.data();
-    if (change.type === 'added' || change.type === 'modified') {
+    if (change.type === 'added') {
       const img = new Image();
       img.onload = () => {
-        const existingDog = dogs.find(d => d.id === change.doc.id);
-        if (existingDog) {
-          // Update existing dog
-          existingDog.x = dogData.x;
-          existingDog.y = dogData.y;
-        } else {
-          // Add new dog
+        if (!dogs.find(d => d.id === change.doc.id)) {
           dogs.push({
             id: change.doc.id,
-            x: dogData.x,
+            x: dogData.x, // Initial position from Firestore
             y: dogData.y,
             img: img,
             scale: 0.5,
             isJumping: false,
             angle: 0,
             spin: 0,
-            speedX: (Math.random() - 0.5) * 2,
+            speedX: (Math.random() - 0.5) * 2, // Local movement
             speedY: (Math.random() - 0.5) * 2
           });
         }
@@ -78,15 +63,7 @@ dogsRef.onSnapshot((snapshot) => {
   });
 });
 
-// Update dog positions in Firestore
-function updateDogPosition(dog) {
-  dogsRef.doc(dog.id).update({
-    x: dog.x,
-    y: dog.y
-  });
-}
-
-// Upload dog to Firebase
+// Upload dog to Firebase (store initial position only)
 document.getElementById('dog-upload').addEventListener('change', function(e) {
   const file = e.target.files[0];
   const reader = new FileReader();
@@ -96,7 +73,7 @@ document.getElementById('dog-upload').addEventListener('change', function(e) {
     img.src = event.target.result;
     img.onload = async () => {
       await dogsRef.add({
-        x: cameraX + canvas.width / 2,
+        x: cameraX + canvas.width / 2, // Initial position
         y: cameraY + canvas.height / 2,
         imgUrl: event.target.result,
         owner: "Anonymous",
@@ -105,28 +82,6 @@ document.getElementById('dog-upload').addEventListener('change', function(e) {
     };
   };
   reader.readAsDataURL(file);
-});
-
-// Real-time chat
-chatRef.orderBy('timestamp').onSnapshot(snapshot => {
-  snapshot.docChanges().forEach(change => {
-    if (change.type === 'added') {
-      const msg = change.doc.data();
-      messagesDiv.innerHTML += `<div>${msg.user}: ${msg.text}</div>`;
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-  });
-});
-
-chatInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter' && chatInput.value.trim()) {
-    chatRef.add({
-      text: chatInput.value,
-      user: "Anonymous",
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    chatInput.value = '';
-  }
 });
 
 // Drag to scroll
@@ -140,7 +95,6 @@ canvas.addEventListener('mousemove', (e) => {
   if (isDragging) {
     cameraX = e.clientX - dragStartX;
     cameraY = e.clientY - dragStartY;
-    // Clamp camera to world bounds
     cameraX = Math.max(-WORLD_SIZE/2 + canvas.width/2, Math.min(WORLD_SIZE/2 - canvas.width/2, cameraX));
     cameraY = Math.max(-WORLD_SIZE/2 + canvas.height/2, Math.min(WORLD_SIZE/2 - canvas.height/2, cameraY));
   }
@@ -157,12 +111,11 @@ document.addEventListener('keydown', (e) => {
     case 'ArrowLeft': cameraX += scrollSpeed; break;
     case 'ArrowRight': cameraX -= scrollSpeed; break;
   }
-  // Clamp camera to world bounds
   cameraX = Math.max(-WORLD_SIZE/2 + canvas.width/2, Math.min(WORLD_SIZE/2 - canvas.width/2, cameraX));
   cameraY = Math.max(-WORLD_SIZE/2 + canvas.height/2, Math.min(WORLD_SIZE/2 - canvas.height/2, cameraY));
 });
 
-// Click to make dog jump and spin
+// Click to make dog jump and spin (local only)
 canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
   const mouseX = e.clientX - rect.left + cameraX;
@@ -200,14 +153,11 @@ function update() {
   dogs.forEach(dog => {
     if (!dog.img) return;
 
-    // Update position and bounce
+    // Update position and bounce (local movement)
     dog.x += dog.speedX;
     dog.y += dog.speedY;
     if (dog.x < -WORLD_SIZE/2 || dog.x > WORLD_SIZE/2) dog.speedX *= -1;
     if (dog.y < -WORLD_SIZE/2 || dog.y > WORLD_SIZE/2) dog.speedY *= -1;
-
-    // Sync dog position with Firestore
-    updateDogPosition(dog);
 
     const screenX = dog.x - cameraX;
     const screenY = dog.y - cameraY;
@@ -239,6 +189,8 @@ function update() {
   minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
   minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
   const scaleFactor = minimapCanvas.width / WORLD_SIZE;
+
+  // Draw dogs on minimap
   dogs.forEach(dog => {
     const minimapX = (dog.x + WORLD_SIZE / 2) * scaleFactor;
     const minimapY = (dog.y + WORLD_SIZE / 2) * scaleFactor;
@@ -247,12 +199,14 @@ function update() {
     minimapCtx.arc(minimapX, minimapY, 2, 0, Math.PI * 2);
     minimapCtx.fill();
   });
-  const viewportX = (-cameraX + WORLD_SIZE / 2) * scaleFactor;
-  const viewportY = (-cameraY + WORLD_SIZE / 2) * scaleFactor;
+
+  // Draw viewport rectangle
+  const viewportX = (cameraX + WORLD_SIZE / 2) * scaleFactor;
+  const viewportY = (cameraY + WORLD_SIZE / 2) * scaleFactor;
   const viewportWidth = canvas.width * scaleFactor;
   const viewportHeight = canvas.height * scaleFactor;
   minimapCtx.strokeStyle = 'white';
-  minimapCtx.strokeRect(viewportX, viewportY, viewportWidth, viewportHeight);
+  minimapCtx.strokeRect(viewportX - viewportWidth / 2, viewportY - viewportHeight / 2, viewportWidth, viewportHeight);
 
   requestAnimationFrame(update);
 }
