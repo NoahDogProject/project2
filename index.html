@@ -72,6 +72,26 @@
       background: rgba(0, 0, 0, 0.5);
       z-index: 999;
     }
+
+    #chat-box {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 300px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 10px;
+      padding: 10px;
+      color: white;
+    }
+    #messages {
+      height: 150px;
+      overflow-y: auto;
+    }
+    #chat-input {
+      width: 100%;
+      padding: 5px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -85,6 +105,15 @@
   >
   <canvas id="gameCanvas"></canvas>
   <canvas id="minimap"></canvas>
+  <div id="chat-box">
+    <div id="messages"></div>
+    <input id="chat-input" placeholder="Type a message...">
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
