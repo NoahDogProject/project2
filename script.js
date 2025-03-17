@@ -9,12 +9,12 @@ minimapCanvas.height = 200;
 
 // Initialize Firebase
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+ apiKey: "AIzaSyCDjErhIZZy04f1_ZXj0C6dGQxVvTfTBYI",
+  authDomain: "dogblob-c0124.firebaseapp.com",
+  projectId: "dogblob-c0124",
+  storageBucket: "dogblob-c0124.firebasestorage.app",
+  messagingSenderId: "495549636725",
+  appId: "1:495549636725:web:d2c6d4b906436a7f3ad83c"
 };
 
 firebase.initializeApp(firebaseConfig);
