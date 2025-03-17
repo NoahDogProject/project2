@@ -7,6 +7,29 @@ canvas.height = 600;
 minimapCanvas.width = 200;
 minimapCanvas.height = 200;
 
+// Initialize Firebase (USE YOUR CONFIG!)
+const firebaseConfig = {
+  apiKey: "AIzaSyCDjErhIZZy04f1_ZXj0C6dGQxVvTfTBYI",
+  authDomain: "dogblob-c0124.firebaseapp.com",
+  databaseURL: "https://dogblob-c0124-default-rtdb.firebaseio.com",
+  projectId: "dogblob-c0124",
+  storageBucket: "dogblob-c0124.firebasestorage.app",
+  messagingSenderId: "495549636725",
+  appId: "1:495549636725:web:d2c6d4b906436a7f3ad83c"
+};
+
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Multiplayer dogs array
+let dogs = [];
+const dogsRef = db.collection('dogs');
+
+// Real-time chat
+const messagesDiv = document.getElementById('messages');
+const chatInput = document.getElementById('chat-input');
+const chatRef = db.collection('chat');
+
 // World settings
 const GRID_SIZE = 300;
 const WORLD_SIZE = 6000;
@@ -16,7 +39,74 @@ let isDragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
 
-let dogs = [];
+// Listen for real-time dog updates
+dogsRef.onSnapshot((snapshot) => {
+  snapshot.docChanges().forEach(change => {
+    const dogData = change.doc.data();
+    if (change.type === 'added') {
+      const img = new Image();
+      img.onload = () => {
+        dogs.push({
+          id: change.doc.id,
+          x: dogData.x,
+          y: dogData.y,
+          img: img,
+          scale: 0.5,
+          isJumping: false,
+          angle: 0,
+          spin: 0,
+          speedX: (Math.random() - 0.5) * 2,
+          speedY: (Math.random() - 0.5) * 2
+        });
+      };
+      img.src = dogData.imgUrl;
+    }
+  });
+});
+
+// Upload dog to Firebase
+document.getElementById('dog-upload').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async (event) => {
+    const img = new Image();
+    img.src = event.target.result;
+    img.onload = async () => {
+      await dogsRef.add({
+        x: cameraX + canvas.width / 2,
+        y: cameraY + canvas.height / 2,
+        imgUrl: event.target.result,
+        owner: "Anonymous",
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    };
+  };
+  reader.readAsDataURL(file);
+});
+
+// Real-time chat
+chatRef.orderBy('timestamp').onSnapshot(snapshot => {
+  snapshot.docChanges().forEach(change => {
+    if (change.type === 'added') {
+      const msg = change.doc.data();
+      messagesDiv.innerHTML += `<div>${msg.user}: ${msg.text}</div>`;
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+  });
+});
+
+chatInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && chatInput.value.trim()) {
+    chatRef.add({
+      text: chatInput.value,
+      user: "Anonymous",
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    chatInput.value = '';
+  }
+});
+
 
 // Handle image upload
 document.getElementById('dog-upload').addEventListener('change', function(e) {
