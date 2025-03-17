@@ -7,7 +7,7 @@ canvas.height = 600;
 minimapCanvas.width = 200;
 minimapCanvas.height = 200;
 
-// Initialize Firebase (v8 syntax)
+// Initialize Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyCDjErhIZZy04f1_ZXj0C6dGQxVvTfTBYI",
   authDomain: "dogblob-c0124.firebaseapp.com",
@@ -20,7 +20,95 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
 
+// Sign in with Google
+document.getElementById('sign-in-button').addEventListener('click', () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).then((result) => {
+    console.log("Signed in as:", result.user.displayName);
+  }).catch((error) => {
+    console.error("Sign-in error:", error);
+  });
+});
+
+// Listen for auth state changes
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    // User is signed in
+    console.log("User signed in:", user.uid);
+    document.getElementById('sign-in-button').style.display = 'none';
+    document.getElementById('user-profile').style.display = 'block';
+    document.getElementById('user-avatar').src = user.photoURL;
+    document.getElementById('user-name').textContent = user.displayName;
+    document.getElementById('dog-upload').disabled = false;
+
+    // Check if the user already has a dog
+    db.collection('users').doc(user.uid).get().then((doc) => {
+      if (!doc.exists) {
+        // Create a new dog for the user
+        createDogForUser(user.uid);
+      } else {
+        // Load the user's dog
+        const dogId = doc.data().dogId;
+        db.collection('dogs').doc(dogId).get().then((dogDoc) => {
+          if (dogDoc.exists) {
+            const dogData = dogDoc.data();
+            console.log("Dog loaded:", dogData.name);
+            document.getElementById('dog-name-input').value = dogData.name;
+            document.getElementById('dog-name-section').style.display = 'block';
+          }
+        });
+      }
+    });
+  } else {
+    // User is signed out
+    console.log("User signed out");
+    document.getElementById('sign-in-button').style.display = 'block';
+    document.getElementById('user-profile').style.display = 'none';
+    document.getElementById('dog-upload').disabled = true;
+    document.getElementById('dog-name-section').style.display = 'none';
+  }
+});
+
+// Create a new dog for the user
+function createDogForUser(userId) {
+  const dog = {
+    owner: userId,
+    x: 0,
+    y: 0,
+    name: "Unnamed Dog", // Default name
+    imgUrl: "", // Placeholder for dog image
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  db.collection('dogs').add(dog).then((docRef) => {
+    console.log("Dog created with ID:", docRef.id);
+    // Link the dog to the user
+    db.collection('users').doc(userId).set({ dogId: docRef.id });
+    document.getElementById('dog-name-section').style.display = 'block';
+  });
+}
+
+// Save dog name
+document.getElementById('save-dog-name').addEventListener('click', () => {
+  const dogName = document.getElementById('dog-name-input').value;
+  if (dogName.trim()) {
+    const user = auth.currentUser;
+    if (user) {
+      db.collection('users').doc(user.uid).get().then((doc) => {
+        if (doc.exists) {
+          const dogId = doc.data().dogId;
+          db.collection('dogs').doc(dogId).update({ name: dogName }).then(() => {
+            console.log("Dog name updated:", dogName);
+          });
+        }
+      });
+    }
+  }
+});
+
+// Rest of your game logic (animations, minimap, etc.) goes here
 // Multiplayer dogs array
 let dogs = [];
 const dogsRef = db.collection('dogs');
