@@ -39,18 +39,6 @@ let isDragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
 
-// Reference to the camera document in Firestore
-const cameraRef = db.collection('camera').doc('position');
-
-// Listen for real-time camera updates
-cameraRef.onSnapshot((doc) => {
-  const data = doc.data();
-  if (data) {
-    cameraX = data.x;
-    cameraY = data.y;
-  }
-});
-
 // Debugging
 console.log("Firebase initialized:", firebase.app().name);
 console.log("Dogs array:", dogs);
@@ -59,10 +47,16 @@ console.log("Dogs array:", dogs);
 dogsRef.onSnapshot((snapshot) => {
   snapshot.docChanges().forEach(change => {
     const dogData = change.doc.data();
-    if (change.type === 'added') {
+    if (change.type === 'added' || change.type === 'modified') {
       const img = new Image();
       img.onload = () => {
-        if (!dogs.find(d => d.id === change.doc.id)) {
+        const existingDog = dogs.find(d => d.id === change.doc.id);
+        if (existingDog) {
+          // Update existing dog
+          existingDog.x = dogData.x;
+          existingDog.y = dogData.y;
+        } else {
+          // Add new dog
           dogs.push({
             id: change.doc.id,
             x: dogData.x,
@@ -75,16 +69,22 @@ dogsRef.onSnapshot((snapshot) => {
             speedX: (Math.random() - 0.5) * 2,
             speedY: (Math.random() - 0.5) * 2
           });
-          console.log("Dog added:", change.doc.id); // Debug log
         }
       };
       img.src = dogData.imgUrl;
     } else if (change.type === 'removed') {
       dogs = dogs.filter(d => d.id !== change.doc.id);
-      console.log("Dog removed:", change.doc.id); // Debug log
     }
   });
 });
+
+// Update dog positions in Firestore
+function updateDogPosition(dog) {
+  dogsRef.doc(dog.id).update({
+    x: dog.x,
+    y: dog.y
+  });
+}
 
 // Upload dog to Firebase
 document.getElementById('dog-upload').addEventListener('change', function(e) {
@@ -143,12 +143,24 @@ canvas.addEventListener('mousemove', (e) => {
     // Clamp camera to world bounds
     cameraX = Math.max(-WORLD_SIZE/2 + canvas.width/2, Math.min(WORLD_SIZE/2 - canvas.width/2, cameraX));
     cameraY = Math.max(-WORLD_SIZE/2 + canvas.height/2, Math.min(WORLD_SIZE/2 - canvas.height/2, cameraY));
-    // Update camera position in Firestore
-    cameraRef.set({ x: cameraX, y: cameraY });
   }
 });
 
 canvas.addEventListener('mouseup', () => isDragging = false);
+
+// Arrow key controls
+document.addEventListener('keydown', (e) => {
+  const scrollSpeed = 20;
+  switch(e.key) {
+    case 'ArrowUp': cameraY += scrollSpeed; break;
+    case 'ArrowDown': cameraY -= scrollSpeed; break;
+    case 'ArrowLeft': cameraX += scrollSpeed; break;
+    case 'ArrowRight': cameraX -= scrollSpeed; break;
+  }
+  // Clamp camera to world bounds
+  cameraX = Math.max(-WORLD_SIZE/2 + canvas.width/2, Math.min(WORLD_SIZE/2 - canvas.width/2, cameraX));
+  cameraY = Math.max(-WORLD_SIZE/2 + canvas.height/2, Math.min(WORLD_SIZE/2 - canvas.height/2, cameraY));
+});
 
 // Click to make dog jump and spin
 canvas.addEventListener('click', (e) => {
@@ -194,12 +206,8 @@ function update() {
     if (dog.x < -WORLD_SIZE/2 || dog.x > WORLD_SIZE/2) dog.speedX *= -1;
     if (dog.y < -WORLD_SIZE/2 || dog.y > WORLD_SIZE/2) dog.speedY *= -1;
 
-    // Apply spin
-    if (dog.spin) {
-      dog.angle += dog.spin;
-      dog.spin *= 0.9;
-      if (Math.abs(dog.spin) < 0.1) dog.spin = 0;
-    }
+    // Sync dog position with Firestore
+    updateDogPosition(dog);
 
     const screenX = dog.x - cameraX;
     const screenY = dog.y - cameraY;
