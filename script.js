@@ -39,6 +39,18 @@ let isDragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
 
+// Reference to the camera document in Firestore
+const cameraRef = db.collection('camera').doc('position');
+
+// Listen for real-time camera updates
+cameraRef.onSnapshot((doc) => {
+  const data = doc.data();
+  if (data) {
+    cameraX = data.x;
+    cameraY = data.y;
+  }
+});
+
 // Debugging
 console.log("Firebase initialized:", firebase.app().name);
 console.log("Dogs array:", dogs);
@@ -131,6 +143,8 @@ canvas.addEventListener('mousemove', (e) => {
     // Clamp camera to world bounds
     cameraX = Math.max(-WORLD_SIZE/2 + canvas.width/2, Math.min(WORLD_SIZE/2 - canvas.width/2, cameraX));
     cameraY = Math.max(-WORLD_SIZE/2 + canvas.height/2, Math.min(WORLD_SIZE/2 - canvas.height/2, cameraY));
+    // Update camera position in Firestore
+    cameraRef.set({ x: cameraX, y: cameraY });
   }
 });
 
@@ -214,36 +228,23 @@ function update() {
   });
 
   // Draw minimap
-minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
-
-// Calculate scaling factor
-const scaleFactor = minimapCanvas.width / WORLD_SIZE;
-
-// Draw dogs on minimap
-dogs.forEach(dog => {
-  const minimapX = (dog.x + WORLD_SIZE / 2) * scaleFactor;
-  const minimapY = (dog.y + WORLD_SIZE / 2) * scaleFactor;
-  minimapCtx.fillStyle = '#4CAF50';
-  minimapCtx.beginPath();
-  minimapCtx.arc(minimapX, minimapY, 2, 0, Math.PI * 2);
-  minimapCtx.fill();
-
-  // Debugging logs
-  console.log("Dog position:", dog.x, dog.y);
-  console.log("Minimap position:", minimapX, minimapY);
-});
-
-// Draw viewport rectangle
-const viewportX = (-cameraX + WORLD_SIZE / 2) * scaleFactor;
-const viewportY = (-cameraY + WORLD_SIZE / 2) * scaleFactor;
-const viewportWidth = canvas.width * scaleFactor;
-const viewportHeight = canvas.height * scaleFactor;
-minimapCtx.strokeStyle = 'white';
-minimapCtx.strokeRect(viewportX, viewportY, viewportWidth, viewportHeight);
-
-// Debugging logs
-console.log("Viewport position:", viewportX, viewportY);
+  minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+  const scaleFactor = minimapCanvas.width / WORLD_SIZE;
+  dogs.forEach(dog => {
+    const minimapX = (dog.x + WORLD_SIZE / 2) * scaleFactor;
+    const minimapY = (dog.y + WORLD_SIZE / 2) * scaleFactor;
+    minimapCtx.fillStyle = '#4CAF50';
+    minimapCtx.beginPath();
+    minimapCtx.arc(minimapX, minimapY, 2, 0, Math.PI * 2);
+    minimapCtx.fill();
+  });
+  const viewportX = (-cameraX + WORLD_SIZE / 2) * scaleFactor;
+  const viewportY = (-cameraY + WORLD_SIZE / 2) * scaleFactor;
+  const viewportWidth = canvas.width * scaleFactor;
+  const viewportHeight = canvas.height * scaleFactor;
+  minimapCtx.strokeStyle = 'white';
+  minimapCtx.strokeRect(viewportX, viewportY, viewportWidth, viewportHeight);
 
   requestAnimationFrame(update);
 }
