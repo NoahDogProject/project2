@@ -151,6 +151,21 @@
     <input type="text" id="dog-name-input" placeholder="Enter your dog's name">
     <button id="save-dog-name">Save Name</button>
   </div>
+  <div id="dog-customization-section" style="display: none;">
+  <h3>Customize Your Dog</h3>
+  <label for="dog-color">Dog Color:</label>
+  <input type="color" id="dog-color" value="#ffcc00">
+  <br>
+  <label for="dog-accessory">Accessory:</label>
+  <select id="dog-accessory">
+    <option value="none">None</option>
+    <option value="hat">Hat</option>
+    <option value="glasses">Glasses</option>
+    <option value="collar">Collar</option>
+  </select>
+  <br>
+  <button id="save-dog-customization">Save Customization</button>
+</div>
   <input type="file" id="dog-upload" accept="image/*" aria-label="Upload a dog photo" disabled>
   <canvas id="gameCanvas"></canvas>
   <canvas id="minimap"></canvas>
