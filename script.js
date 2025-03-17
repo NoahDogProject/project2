@@ -46,20 +46,25 @@ dogsRef.onSnapshot((snapshot) => {
     if (change.type === 'added') {
       const img = new Image();
       img.onload = () => {
-        dogs.push({
-          id: change.doc.id,
-          x: dogData.x,
-          y: dogData.y,
-          img: img,
-          scale: 0.5,
-          isJumping: false,
-          angle: 0,
-          spin: 0,
-          speedX: (Math.random() - 0.5) * 2,
-          speedY: (Math.random() - 0.5) * 2
-        });
+        // Check if dog already exists
+        if (!dogs.find(d => d.id === change.doc.id)) {
+          dogs.push({
+            id: change.doc.id,
+            x: dogData.x,
+            y: dogData.y,
+            img: img,
+            scale: 0.5,
+            isJumping: false,
+            angle: 0,
+            spin: 0,
+            speedX: (Math.random() - 0.5) * 2,
+            speedY: (Math.random() - 0.5) * 2
+          });
+        }
       };
       img.src = dogData.imgUrl;
+    } else if (change.type === 'removed') {
+      dogs = dogs.filter(d => d.id !== change.doc.id);
     }
   });
 });
@@ -105,36 +110,6 @@ chatInput.addEventListener('keypress', (e) => {
     });
     chatInput.value = '';
   }
-});
-
-
-// Handle image upload
-document.getElementById('dog-upload').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  const reader = new FileReader();
-
-  reader.onload = function(event) {
-    const img = new Image();
-    img.onerror = () => console.error("Failed to load dog image.");
-    img.src = event.target.result;
-    img.onload = () => {
-      // Place dog at the center of the current view
-      const dog = {
-        x: cameraX + canvas.width / 2,
-        y: cameraY + canvas.height / 2,
-        img: img,
-        scale: 0.5,
-        isJumping: false,
-        angle: 0,
-        spin: 0,
-        speedX: (Math.random() - 0.5) * 2,
-        speedY: (Math.random() - 0.5) * 2,
-      };
-      dogs.push(dog);
-      console.log("Dog added to:", dog.x, dog.y); // Debug log
-    };
-  };
-  reader.readAsDataURL(file);
 });
 
 // Drag to scroll
